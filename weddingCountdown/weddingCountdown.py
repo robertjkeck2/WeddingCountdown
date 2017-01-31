@@ -1,16 +1,26 @@
-from urllib import request
-import lxml.html
+#Built-ins
 import time
 import os
 from datetime import datetime
 import smtplib
 from random import randrange
+from urllib import request
+
+#Externals
+import lxml.html
 import pandas as pd
 
 
+#Hard-coded wedding date
 WEDDING_DAY = datetime(2017, 10, 28)
 
 def get_time_to_wedding():
+	"""
+	Uses datetime module to return countdown values
+
+	Args: None
+	"""
+
 	now = datetime.now()
 	time_to_wedding = WEDDING_DAY - now
 	days_to_wedding = time_to_wedding.days
@@ -20,6 +30,12 @@ def get_time_to_wedding():
 	return str(days_to_wedding), str(hours_to_wedding), str(minutes_to_wedding), str(seconds_to_wedding), now
 
 def pull_pinterest():
+	"""
+	Uses requests to parse all links with keywords pin and activity and returns first found
+
+	Args: None
+	"""
+
 	connection = request.urlopen('https://www.pinterest.com/categories/weddings/')
 
 	dom =  lxml.html.fromstring(connection.read())
@@ -30,6 +46,13 @@ def pull_pinterest():
 			break
 
 def get_message(days, hours, minutes, seconds, link):
+	"""
+	Pulls stock message parts from messages.xlsx and combines with countdown to create message
+
+	Args: days, hours, minutes, seconds - countdown time
+		  link - pinterest random wedding pin link from pull_pinterest function
+	"""
+
 	df = pd.read_excel('messages.xlsx')
 
 	message_components = []
@@ -56,6 +79,13 @@ def get_message(days, hours, minutes, seconds, link):
 	return message
 
 def send_email(message, now):
+	"""
+	Uses smtplib to send countdown message to recipient
+
+	Args: message - countdown message from get_message function
+		  now - current date from datetime module
+	"""
+
 	from_address = 'from_email'
 	to_address = 'to_email'
 	subject = 'Wedding Countdown: ' + str(now.month) + '/' + str(now.day) + '/' + str(now.year)
@@ -69,15 +99,15 @@ def send_email(message, now):
 	return error_log
 
 def log(link, error_log):
+	"""
+	Log each run along with the Pin link for each day
+
+	Args: link - pinterest random pin link from pull_pinterest function
+		  error_log - status of email send from send_email function
+	"""
+
 	today = datetime.now().strftime('%Y-%m-%d')
 	logrow = today + ' ' + str(error_log) + ' ' + link
 	fp = open('wedding_logfile.txt','a')
 	fp.write(logrow + '\n')
 	fp.close()
-
-days, hours, minutes, seconds, now = get_time_to_wedding()
-link = pull_pinterest()
-message = get_message(days, hours, minutes, seconds, link)
-error_log = send_email(message, now)
-log(link, error_log)
-
